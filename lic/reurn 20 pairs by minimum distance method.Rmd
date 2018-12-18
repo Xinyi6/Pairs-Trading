@@ -1,0 +1,137 @@
+---
+title: "rerun 20 pairs by minimum distance method"
+author: "Xinyi Li"
+date: "2018/4/17"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+#install.packages("tseries")
+library(quantmod)
+library(tseries)
+library(xts)
+library(zoo)
+library(PerformanceAnalytics)
+library(knitr)
+library(ggplot2)
+options(scipen=999)
+```
+
+```{r}
+stock1 <- "MCO"
+stock2 <- "CDNS"
+
+getSymbols(stock1, src = "yahoo")
+getSymbols(stock2, src = "yahoo")
+
+stock1 <- MCO
+stock2 <- CDNS
+ 
+kable(head(stock1))
+kable(head(stock2))
+```
+
+```{R}
+stock1 <- stock1[, 6]
+stock2 <- stock2[, 6]
+ 
+cut_off_date <- as.Date("2017-01-01")
+cut_off_date2 <- as.Date("2018-01-01")
+
+stock1 <- stock1[(index(stock1) >= cut_off_date) & (index(stock1) < cut_off_date2)]
+stock2 <- stock2[(index(stock2) >= cut_off_date) & (index(stock2) < cut_off_date2)]
+
+stock1[is.na(stock1),]
+stock2[is.na(stock2),]
+# replacing each NA with the most recent non-NA prior to it.
+stock1 <- na.locf(stock1)
+stock2 <- na.locf(stock2)
+
+# Delt() converts closing prices to returns. By default it calculates one period return
+ret_stock1 <- Delt(stock1)
+ret_stock2 <- Delt(stock2)
+```
+
+```{r}
+ret_stock1 <- round(ret_stock1+1, 4)
+ret_stock1[1] <- 1
+norm_stock1 <- cumprod(ret_stock1)
+
+ret_stock2 <- round(ret_stock2+1, 4)
+ret_stock2[1] <- 1
+norm_stock2 <- cumprod(ret_stock2)
+norm_stock12 <- data.frame(stock1 = norm_stock1,stock2 = norm_stock2)
+```
+
+```{r}
+ggplot(data = norm_stock12) +
+  geom_line(aes(x=index(norm_stock12), y=Delt.1.arithmetic, color = "red")) +
+  geom_line(aes(x=index(norm_stock12), y=Delt.1.arithmetic.1, color = "blue"))+
+  ylab("Normalized Price") +
+  theme_bw()
+
+  
+diff <- norm_stock1 - norm_stock2
+ggplot(data = diff, aes(x=index(diff), y = Delt.1.arithmetic, color = diff)) + 
+         geom_line() +
+         ylab("Normalized Price Difference") +
+         theme_bw()
+```
+
+```{r}
+n <- 1
+me_dynamic <- rollapply(diff, 10, mean)
+std_dynamic <- rollapply(diff, 10, sd)
+ 
+ub <- me_dynamic + n*std_dynamic
+lb <- me_dynamic - n*std_dynamic
+ 
+signal <- ifelse(diff > ub, -1, 
+                 ifelse(diff < lb, 1, 0))
+ggplot(data = signal, aes(x=index(diff), y = Delt.1.arithmetic, color = signal)) + 
+         geom_line() +
+         ylab("signal") +
+         theme_bw()
+```
+Generate the return series for the strategy
+
+Since we are working with Adjusted Closing prices, therefore we can act (BUY or SELL) on our signal next day only. So our return will depend on the return for the period next to that of the signal. Hence, we’ll use the lag function to calculate the return of this strategy
+```{r}
+spread_return <- ret_stock1 - ret_stock2
+trade_return <- spread_return*lag(signal)
+
+summary(trade_return)
+
+```
+Analyze the return
+```{r}
+charts.PerformanceSummary(trade_return)
+```
+
+```{r}
+print(paste0("Cumulative Returns -- ", Return.cumulative(trade_return)))
+print(paste0("Annualized Returns -- ", Return.annualized(trade_return)))
+print(paste0("Maximum Drawdown -- ", maxDrawdown(trade_return)))
+print(paste0("Sharpe Ratio -- ", SharpeRatio(as.ts(trade_return), Rf = 0, p = 0.95, FUN = "StdDev")))
+print(paste0("Annualized Sharpe Ratio -- ", SharpeRatio.annualized(trade_return, Rf = 0)))
+
+```
+
+```{r}
+# Delete NA, count mean and variance
+trade_return1<-na.omit(trade_return)
+mean(trade_return1)
+var(trade_return1)
+
+trade_return1<-as.numeric(trade_return1)
+nr<-length(trade_return1)
+
+trade_return1_matirx<-matrix(NA,nrow = nr,ncol = 1)
+for(i in 1:nr)
+{
+  trade_return1_matirx[i,1]<-trade_return1[i]
+}
+write.csv(trade_return1_matirx,"e://2018 spring//5261//project//return//20.csv",row.names = FALSE) 
+```
