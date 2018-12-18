@@ -1,0 +1,171 @@
+---
+title: 'Data processing and Caculate sum of squared differences'
+author: "Xinyi Li"
+date: "2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Read data
+```{r}
+stock_all <- read.csv("all_stocks.csv", header = T)
+rowlength<-dim(stock_all)[1]
+```
+
+# Choose data according to time
+```{r}
+#install.packages("lubridate")
+library(lubridate)
+
+dates<-as.Date(stock_all$date)
+
+stock_all<-data.frame(stock_all,dates)
+
+stock_2017<-data.frame(stock_all[which(year(stock_all$dates)==2017),])
+```
+
+## Deal with NA
+
+```{r}
+NN<-which(table(stock_2017$Name)!=251)
+Name_delete<-names(NN)
+
+for(i in 1:length(Name_delete))
+{
+  stock_2017<-stock_2017[which(stock_2017$Name!=Name_delete[i]),]
+}
+```
+
+## Normalize stock price
+```{r}
+count<-table(stock_2017$Name)
+
+stock_2017_split<-split.data.frame(stock_2017,stock_2017$Name)
+
+n_delete<-length(Name_delete)
+
+n<-length(names(stock_2017_split))-n_delete
+m<-length(stock_2017$close)
+p<-rep(251,n)
+
+## Use "num" instead of name
+num<-rep(c(1:n),count[which(count!=0)])
+stock_2017<-data.frame(stock_2017,num)
+
+
+## Set up matrix to store colse norm
+close_matrix<-matrix(NA,nrow = n,ncol = p[1])
+
+for(i in 1:n)
+{
+  for(j in 1:p[i])
+  {
+    close_matrix[i,j]<-scale(stock_2017$close[which(stock_2017$num==i)])[j,1]
+  }
+}
+
+## scale close price to start at $1
+x<-1-close_matrix[,1]
+
+for(i in 1:n)
+{
+  for(j in 1:p[i])
+  {
+    close_matrix[i,j]<-close_matrix[i,j]+x[i]
+  }
+}
+```
+
+
+## Caculate sum of squared differences (SSD)
+```{r}
+## Set up matrix to store data of SSD
+SSD_length<-n*(n-1)/2
+
+SSD1<-dist(close_matrix, method = "euclidean",diag = FALSE, upper = FALSE, p = 2)
+#options(max.print=100000000)
+```
+## Sort SSD
+```{r}
+top_min<-100
+
+SSD1_order<-order(SSD1)[1:top_min]#The positon of min 20
+
+SSD1_value<-SSD1[SSD1_order]#The value of min 20
+
+SSD1_matrix<-as.matrix(SSD1)
+```
+
+## Find names of min 100
+```{r}
+SSD1_name_matirx<-matrix(NA,nrow = top_min,ncol = 5)
+for(i in 1:top_min)
+{ SSD1_name_matirx[i,1]<-(SSD1_value[i])^2
+  Find.name<-which(SSD1_matrix==SSD1_value[i],arr.ind = TRUE)
+  SSD1_name_matirx[i,2]<-Find.name[1,1]# num
+  SSD1_name_matirx[i,3]<-Find.name[1,2]# num
+  SSD1_name_matirx[i,4]<-as.character(stock_2017$Name[which(stock_2017$num==Find.name[1,1])][1])#name
+   SSD1_name_matirx[i,5]<-as.character(stock_2017$Name[which(stock_2017$num==Find.name[1,2])][1])#name
+}
+colnames(SSD1_name_matirx)<-c("value","num i","num j","name i","name j")
+##SSD1_name_matirx
+write.csv(SSD1_name_matirx,"e://2018 spring//5261//project//SSD1.csv",row.names = FALSE) 
+```
+
+## Distance - Manhattan
+```{r}
+SSD2<-dist(close_matrix, method = "manhattan",diag = FALSE, upper = FALSE, p = 2)
+
+SSD2_order<-order(SSD2)[1:top_min]#The positon of min 20
+SSD2_value<-SSD2[SSD2_order]#The value of min 20
+
+SSD2_matrix<-as.matrix(SSD2)
+
+SSD2_name_matirx<-matrix(NA,nrow = top_min,ncol = 5)
+
+for(i in 1:top_min)
+{
+  SSD2_name_matirx[i,1]<-SSD2_value[i]
+  
+  Find.name<-which(SSD2_matrix==SSD2_value[i],arr.ind = TRUE)
+
+  SSD2_name_matirx[i,2]<-Find.name[1,1]# num
+  SSD2_name_matirx[i,3]<-Find.name[1,2]# num
+   SSD2_name_matirx[i,4]<-as.character(stock_2017$Name[which(stock_2017$num==Find.name[1,1])][1])#name
+   SSD2_name_matirx[i,5]<-as.character(stock_2017$Name[which(stock_2017$num==Find.name[1,2])][1])#name
+}
+colnames(SSD2_name_matirx)<-c("value","num i","num j","name i","name j")
+##SSD2_name_matirx
+write.csv(SSD1_name_matirx,"e://2018 spring//5261//project//SSD2.csv",row.names = FALSE) 
+```
+
+## Distance - Canberra
+```{r}
+SSD3<-dist(close_matrix, method = "canberra",diag = FALSE, upper = FALSE, p = 2)
+
+SSD3_order<-order(SSD3)[1:top_min]#The positon of min 20
+SSD3_value<-SSD3[SSD3_order]#The value of min 20
+
+SSD3_matrix<-as.matrix(SSD3)
+
+SSD3_name_matirx<-matrix(NA,nrow = top_min,ncol = 5)
+
+for(i in 1:top_min)
+{
+  SSD3_name_matirx[i,1]<-SSD3_value[i]
+  
+  Find.name<-which(SSD3_matrix==SSD3_value[i],arr.ind = TRUE)
+
+  SSD3_name_matirx[i,2]<-Find.name[1,1]# num
+  SSD3_name_matirx[i,3]<-Find.name[1,2]# num
+   SSD3_name_matirx[i,4]<-as.character(stock_2017$Name[which(stock_2017$num==Find.name[1,1])][1])#name
+   SSD3_name_matirx[i,5]<-as.character(stock_2017$Name[which(stock_2017$num==Find.name[1,2])][1])#name
+}
+colnames(SSD3_name_matirx)<-c("value","num i","num j","name i","name j")
+#SSD3_name_matirx
+write.csv(SSD3_name_matirx,"e://2018 spring//5261//project//SSD3.csv",row.names = FALSE) 
+```
+
+
+
