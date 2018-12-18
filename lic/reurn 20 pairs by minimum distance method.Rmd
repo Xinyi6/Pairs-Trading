@@ -1,7 +1,7 @@
 ---
 title: "rerun 20 pairs by minimum distance method"
 author: "Xinyi Li"
-date: "2018/4/17"
+date: "2018"
 output:
   html_document: default
   pdf_document: default
