@@ -6,6 +6,7 @@ Pairs traders wait for weakness in the correlation and then go long the under-pe
 short selling the over-performer, closing the positions as the relationship returns to statistical norms. In this paper,
 we utilized three different strategies (minimum distance, co-integration and copula) to perform pairs trading
 from pair selection to signal capture.
+
 The data in this paper contains the close prices of the S&P 500 stocks from Yahoo. Finance in the period of
 2013-2018. These stocks are among the most liquid in the world. Consequently, transaction costs will be
 relatively low considering the time and effort of completing a transaction. According to the assumptions and the
